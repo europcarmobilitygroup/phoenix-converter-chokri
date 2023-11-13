@@ -1,0 +1,48 @@
+import { ASTConverter, ASTResultKind, ASTTransform, ReferenceKind } from "../types";
+import type ts from "typescript";
+import { TsHelper } from "../../helpers/TsHelper";
+
+export const convertName: ASTConverter<ts.Identifier> = (node, options) => {
+  const $t = new TsHelper(options);
+  return {
+    tag: "Class-Name",
+    kind: ASTResultKind.OBJECT,
+    imports: [],
+    reference: ReferenceKind.NONE,
+    attributes: [],
+    nodes: [
+      $t.factory.createPropertyAssignment("name", $t.factory.createStringLiteral(node.getText())),
+    ],
+  };
+};
+
+export const mergeName: ASTTransform = (astResults) => {
+  const nameTags = ["Class-Name", "Obj-Name"];
+
+  const nameASTResults = astResults.filter((el) => nameTags.includes(el.tag));
+  const nameObjASTResults = nameASTResults.find((el) => el.tag === "Obj-Name");
+  const otherASTResults = astResults.filter((el) => !nameTags.includes(el.tag));
+
+  const resultNameASTResults =
+    nameASTResults.length === 1
+      ? {
+          tag: "Name",
+          kind: ASTResultKind.OBJECT,
+          imports: [],
+          reference: ReferenceKind.NONE,
+          attributes: [],
+          nodes: nameASTResults[0].nodes as ts.PropertyAssignment[],
+        }
+      : {
+          tag: "Name",
+          kind: ASTResultKind.OBJECT,
+          imports: [],
+          reference: ReferenceKind.NONE,
+          attributes: [],
+          ...(nameObjASTResults
+            ? { nodes: nameObjASTResults.nodes as ts.PropertyAssignment[] }
+            : { nodes: [] }),
+        };
+
+  return [resultNameASTResults, ...otherASTResults];
+};
